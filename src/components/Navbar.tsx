@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTree, faBars, faXmark } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 const NAV_LINKS = [
   { label: "Home", href: "/#home" },
@@ -13,8 +15,44 @@ const NAV_LINKS = [
   { label: "Blog", href: "/blog" },
   { label: "Contact", href: "/#contact" },
 ];
+
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+  const [checkedAuth, setCheckedAuth] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [homeHref, setHomeHref] = useState("/admin");
+
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        setCheckedAuth(true);
+        return;
+      }
+
+      setIsLoggedIn(true);
+
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userData.user.id)
+        .single();
+
+      if (roleData?.role === "member") setHomeHref("/dashboard");
+      else if (roleData?.role === "guest") setHomeHref("/");
+      else setHomeHref("/admin");
+
+      setCheckedAuth(true);
+    }
+    checkAuth();
+  }, []);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-[var(--color-ivory)]/95 backdrop-blur-sm border-b border-[var(--color-navy)]/10">
@@ -44,20 +82,41 @@ export default function Navbar() {
           ))}
         </ul>
 
-        {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-[var(--color-navy)] hover:text-[var(--color-gold)] transition-colors"
-          >
-            Login
-          </Link>
-          <a
-            href="/#contact"
-            className="bg-[var(--color-navy)] text-[var(--color-ivory)] text-sm font-medium px-5 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors duration-300"
-          >
-            Get Started
-          </a>
+        {/* Desktop CTA — three states: loading (blank placeholder) → logged-in → logged-out */}
+        <div className="hidden md:flex items-center gap-3 min-w-[180px] justify-end">
+          {!checkedAuth ? (
+            <div className="w-full h-9" aria-hidden="true" />
+          ) : isLoggedIn ? (
+            <>
+              <Link
+                href={homeHref}
+                className="text-sm font-medium text-[var(--color-navy)] hover:text-[var(--color-gold)] transition-colors"
+              >
+                {homeHref === "/dashboard" ? "My Dashboard" : "Admin Panel"}
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="bg-[var(--color-maroon)] text-[var(--color-ivory)] text-sm font-medium px-5 py-2.5 rounded-full hover:opacity-90 transition-opacity"
+              >
+                Log Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-[var(--color-navy)] hover:text-[var(--color-gold)] transition-colors"
+              >
+                Login
+              </Link>
+              <a
+                href="/#contact"
+                className="bg-[var(--color-navy)] text-[var(--color-ivory)] text-sm font-medium px-5 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors duration-300"
+              >
+                Get Started
+              </a>
+            </>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -114,20 +173,43 @@ export default function Navbar() {
             </li>
           ))}
           <li className="pt-3 space-y-2">
-            <Link
-              href="/login"
-              onClick={() => setIsOpen(false)}
-              className="block text-center border border-[var(--color-navy)]/20 text-[var(--color-navy)] font-medium px-5 py-2.5 rounded-full"
-            >
-              Login
-            </Link>
-            <a
-              href="/#contact"
-              onClick={() => setIsOpen(false)}
-              className="block text-center bg-[var(--color-navy)] text-[var(--color-ivory)] font-medium px-5 py-2.5 rounded-full"
-            >
-              Get Started
-            </a>
+            {!checkedAuth ? null : isLoggedIn ? (
+              <>
+                <Link
+                  href={homeHref}
+                  onClick={() => setIsOpen(false)}
+                  className="block text-center border border-[var(--color-navy)]/20 text-[var(--color-navy)] font-medium px-5 py-2.5 rounded-full"
+                >
+                  {homeHref === "/dashboard" ? "My Dashboard" : "Admin Panel"}
+                </Link>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full text-center bg-[var(--color-maroon)] text-[var(--color-ivory)] font-medium px-5 py-2.5 rounded-full"
+                >
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setIsOpen(false)}
+                  className="block text-center border border-[var(--color-navy)]/20 text-[var(--color-navy)] font-medium px-5 py-2.5 rounded-full"
+                >
+                  Login
+                </Link>
+                <a
+                  href="/#contact"
+                  onClick={() => setIsOpen(false)}
+                  className="block text-center bg-[var(--color-navy)] text-[var(--color-ivory)] font-medium px-5 py-2.5 rounded-full"
+                >
+                  Get Started
+                </a>
+              </>
+            )}
           </li>
         </ul>
       </div>
