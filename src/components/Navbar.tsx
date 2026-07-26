@@ -82,7 +82,31 @@ export default function Navbar() {
             <li key={link.href}>
               <a
                 href={link.href}
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => {
+                  const isHashLink = link.href.includes("#");
+
+                  if (!isHashLink) {
+                    // Plain page link (e.g. /blog, /login) — let it navigate normally,
+                    // just close the menu first so it doesn't stay open after the jump
+                    setIsOpen(false);
+                    return;
+                  }
+
+                  e.preventDefault();
+                  setIsOpen(false);
+
+                  const targetId = link.href.split("#")[1];
+
+                  setTimeout(() => {
+                    if (window.location.pathname !== "/") {
+                      window.location.href = link.href;
+                      return;
+                    }
+                    document
+                      .getElementById(targetId)
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 320);
+                }}
                 className="block py-3 font-body text-[var(--color-ink)]/80 hover:text-[var(--color-navy)] border-b border-[var(--color-navy)]/5"
               >
                 {link.label}

@@ -21,7 +21,7 @@ export default function Contact() {
   }
 
   return (
-    <section id="contact" className="py-20 md:py-28 px-4 md:px-8">
+    <section id="contact" className="py-20 md:py-8 px-4 md:px-8">
       <ScrollReveal>
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12">
           {/* Left: info */}
