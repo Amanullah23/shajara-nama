@@ -18,6 +18,7 @@ import {
   faCamera,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "@/lib/supabase";
+import { Suspense } from "react";
 
 type PersonOption = { id: string; full_name: string };
 type BranchOption = { id: string; name: string };
@@ -49,7 +50,7 @@ function SectionCard({
   );
 }
 
-export default function AddPersonPage() {
+function AddPersonForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefillFatherId = searchParams.get("fatherId") ?? "";
@@ -883,5 +884,18 @@ export default function AddPersonPage() {
         </button>
       </div>
     </form>
+  );
+}
+export default function AddPersonPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="font-body text-sm text-[var(--color-ink)]/50 text-center py-16">
+          Loading...
+        </p>
+      }
+    >
+      <AddPersonForm />
+    </Suspense>
   );
 }
