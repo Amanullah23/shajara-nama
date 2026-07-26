@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faImage } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "@/lib/supabase";
+import ScrollReveal from "@/components/ScrollReveal";
 
 type GalleryPhoto = { id: string; caption: string | null; url: string };
 
@@ -49,56 +50,58 @@ export default function Gallery() {
 
   return (
     <section id="gallery" className="py-20 md:py-28 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <span className="font-body text-xs tracking-wide uppercase text-[var(--color-maroon)]">
-            Memories
-          </span>
-          <h2 className="font-display text-3xl md:text-4xl font-semibold text-[var(--color-navy)] mt-3">
-            Moments worth keeping
-          </h2>
-          <p className="font-body text-[var(--color-ink)]/70 mt-4">
-            Photos, letters, and keepsakes — organized and safe for every
-            generation to revisit.
-          </p>
-        </div>
-
-        {loading ? (
-          <p className="font-body text-sm text-[var(--color-ink)]/50 text-center py-10">
-            Loading gallery...
-          </p>
-        ) : photosDisabled ? (
-          <p className="font-body text-sm text-[var(--color-ink)]/50 text-center py-10">
-            The gallery is currently private. Family members can view it after
-            logging in.
-          </p>
-        ) : photos.length === 0 ? (
-          <p className="font-body text-sm text-[var(--color-ink)]/50 text-center py-10">
-            No photos have been shared publicly yet — check back soon.
-          </p>
-        ) : (
-          <div className="columns-2 md:columns-3 gap-4 space-y-4">
-            {photos.map((photo) => (
-              <button
-                key={photo.id}
-                onClick={() => setActive(photo)}
-                className="group relative w-full rounded-2xl overflow-hidden bg-[var(--color-navy)]/10 border border-[var(--color-navy)]/10 block break-inside-avoid"
-              >
-                <img
-                  src={photo.url}
-                  alt={photo.caption ?? ""}
-                  className="w-full h-auto block"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy)]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                  <span className="font-body text-sm text-[var(--color-ivory)] text-left">
-                    {photo.caption}
-                  </span>
-                </div>
-              </button>
-            ))}
+      <ScrollReveal>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span className="font-body text-xs tracking-wide uppercase text-[var(--color-maroon)]">
+              Memories
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl font-semibold text-[var(--color-navy)] mt-3">
+              Moments worth keeping
+            </h2>
+            <p className="font-body text-[var(--color-ink)]/70 mt-4">
+              Photos, letters, and keepsakes — organized and safe for every
+              generation to revisit.
+            </p>
           </div>
-        )}
-      </div>
+
+          {loading ? (
+            <p className="font-body text-sm text-[var(--color-ink)]/50 text-center py-10">
+              Loading gallery...
+            </p>
+          ) : photosDisabled ? (
+            <p className="font-body text-sm text-[var(--color-ink)]/50 text-center py-10">
+              The gallery is currently private. Family members can view it after
+              logging in.
+            </p>
+          ) : photos.length === 0 ? (
+            <p className="font-body text-sm text-[var(--color-ink)]/50 text-center py-10">
+              No photos have been shared publicly yet — check back soon.
+            </p>
+          ) : (
+            <div className="columns-2 md:columns-3 gap-4 space-y-4">
+              {photos.map((photo) => (
+                <button
+                  key={photo.id}
+                  onClick={() => setActive(photo)}
+                  className="group relative w-full rounded-2xl overflow-hidden bg-[var(--color-navy)]/10 border border-[var(--color-navy)]/10 block break-inside-avoid"
+                >
+                  <img
+                    src={photo.url}
+                    alt={photo.caption ?? ""}
+                    className="w-full h-auto block"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy)]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                    <span className="font-body text-sm text-[var(--color-ivory)] text-left">
+                      {photo.caption}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </ScrollReveal>
 
       {active && (
         <div

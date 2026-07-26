@@ -55,7 +55,7 @@ export default function Hero() {
         {/* Right: signature animated tree */}
         <div className="flex justify-center md:justify-end">
           <svg
-            viewBox="0 0 400 400"
+            viewBox="0 90 400 310"
             className="w-full max-w-md"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
