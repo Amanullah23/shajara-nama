@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -9,6 +9,7 @@ import {
   faTrash,
   faUsers,
   faXmark,
+  faEye,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "@/lib/supabase";
 import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
@@ -215,6 +216,14 @@ export default function BranchesPage() {
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <Link
+                    href={`/admin/branches/${branch.id}`}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-emerald)] hover:bg-[var(--color-emerald)]/10"
+                    aria-label="View branch tree"
+                    title="View branch tree"
+                  >
+                    <FontAwesomeIcon icon={faEye} className="text-xs" />
+                  </Link>
                   <button
                     onClick={() => openEdit(branch)}
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-navy)] hover:bg-[var(--color-navy)]/10"
