@@ -23,7 +23,6 @@ import {
   faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "@/lib/supabase";
-import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
 
 type Person = {
   id: string;
@@ -238,38 +237,40 @@ export default function ViewPersonPage() {
 
   return (
     <div className="space-y-6 pb-8" id="printable-bio">
-      {/* Top bar — hidden when printing */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+      {/* Top bar — hidden when printing; wraps on mobile instead of overflowing */}
+      <div className="flex flex-col gap-3 no-print">
         <Link
           href="/admin/members"
-          className="inline-flex items-center gap-2 font-body text-sm text-[var(--color-navy)]/70 hover:text-[var(--color-navy)]"
+          className="inline-flex items-center gap-2 font-body text-sm text-[var(--color-navy)]/70 hover:text-[var(--color-navy)] self-start"
         >
           <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
           Back to Members
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <a
             href={`/person/${person.id}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 font-body text-sm font-medium text-[var(--color-navy)] bg-[var(--color-navy)]/5 px-4 py-2.5 rounded-full hover:bg-[var(--color-navy)]/10 transition-colors whitespace-nowrap"
+            className="inline-flex items-center gap-2 font-body text-xs sm:text-sm font-medium text-[var(--color-navy)] bg-[var(--color-navy)]/5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full hover:bg-[var(--color-navy)]/10 transition-colors whitespace-nowrap"
           >
             <FontAwesomeIcon
               icon={faArrowUpRightFromSquare}
               className="text-xs"
             />
-            View Public Profile
+            <span className="hidden xs:inline">View Public Profile</span>
+            <span className="xs:hidden">Public Profile</span>
           </a>
           <button
             onClick={handlePrint}
-            className="inline-flex cursor-pointer items-center gap-2 font-body text-sm font-medium text-[var(--color-emerald)] bg-[var(--color-emerald)]/10 px-4 py-2.5 rounded-full hover:bg-[var(--color-emerald)]/20 transition-colors whitespace-nowrap"
+            className="inline-flex items-center gap-2 font-body text-xs sm:text-sm font-medium text-[var(--color-emerald)] bg-[var(--color-emerald)]/10 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full hover:bg-[var(--color-emerald)]/20 transition-colors whitespace-nowrap"
           >
             <FontAwesomeIcon icon={faDownload} className="text-xs" />
-            Print / Save as PDF
+            <span className="hidden xs:inline">Print / Save as PDF</span>
+            <span className="xs:hidden">Print</span>
           </button>
           <Link
             href={`/admin/members/${person.id}/edit`}
-            className="inline-flex items-center gap-2 bg-[var(--color-navy)] text-[var(--color-ivory)] font-body text-sm font-medium px-4 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors whitespace-nowrap"
+            className="inline-flex items-center gap-2 bg-[var(--color-navy)] text-[var(--color-ivory)] font-body text-xs sm:text-sm font-medium px-3 sm:px-4 py-2 sm:py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors whitespace-nowrap"
           >
             <FontAwesomeIcon icon={faPen} className="text-xs" />
             Edit
@@ -278,8 +279,8 @@ export default function ViewPersonPage() {
       </div>
 
       {/* Header card */}
-      <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 md:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left print:border-none print:bg-transparent">
-        <div className="w-28 h-28 rounded-full bg-[var(--color-navy)]/10 overflow-hidden flex items-center justify-center shrink-0">
+      <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left print:border-none print:bg-transparent">
+        <div className="w-24 h-24 rounded-full bg-[var(--color-navy)]/10 overflow-hidden flex items-center justify-center shrink-0">
           {avatarUrl ? (
             <img
               src={avatarUrl}
@@ -293,12 +294,12 @@ export default function ViewPersonPage() {
             />
           )}
         </div>
-        <div className="flex-1">
-          <h1 className="font-display text-2xl md:text-3xl font-semibold text-[var(--color-navy)]">
+        <div className="flex-1 min-w-0 w-full">
+          <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-semibold text-[var(--color-navy)] break-words">
             {person.full_name}
           </h1>
           {person.native_name && (
-            <p className="font-body text-[var(--color-ink)]/60 mt-0.5">
+            <p className="font-body text-[var(--color-ink)]/60 mt-0.5 break-words">
               {person.native_name}
             </p>
           )}
@@ -351,7 +352,7 @@ export default function ViewPersonPage() {
       </div>
 
       {person.biography && (
-        <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+        <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
           <h2 className="font-display text-lg font-semibold text-[var(--color-navy)] mb-2">
             Biography
           </h2>
@@ -362,7 +363,7 @@ export default function ViewPersonPage() {
       )}
 
       {/* Family */}
-      <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+      <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
         <h2 className="font-display text-lg font-semibold text-[var(--color-navy)] mb-4 flex items-center gap-2">
           <FontAwesomeIcon
             icon={faUsers}
@@ -422,7 +423,7 @@ export default function ViewPersonPage() {
       <div className="grid sm:grid-cols-2 gap-6">
         {/* Location */}
         {(person.country || person.province || person.village) && (
-          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
             <h2 className="font-display text-base font-semibold text-[var(--color-navy)] mb-3 flex items-center gap-2">
               <FontAwesomeIcon
                 icon={faLocationDot}
@@ -445,7 +446,7 @@ export default function ViewPersonPage() {
 
         {/* Education */}
         {(person.school || person.university || person.degree) && (
-          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
             <h2 className="font-display text-base font-semibold text-[var(--color-navy)] mb-3 flex items-center gap-2">
               <FontAwesomeIcon
                 icon={faGraduationCap}
@@ -464,7 +465,7 @@ export default function ViewPersonPage() {
 
         {/* Career */}
         {(person.occupation || person.company) && (
-          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
             <h2 className="font-display text-base font-semibold text-[var(--color-navy)] mb-3 flex items-center gap-2">
               <FontAwesomeIcon
                 icon={faBriefcase}
@@ -481,7 +482,7 @@ export default function ViewPersonPage() {
 
         {/* Contact — admin-only sensitive info, still included in the printed PDF since this is an internal admin document */}
         {(person.phone || person.email || person.whatsapp) && (
-          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
             <h2 className="font-display text-base font-semibold text-[var(--color-navy)] mb-3 flex items-center gap-2">
               <FontAwesomeIcon
                 icon={faAddressBook}
@@ -491,17 +492,17 @@ export default function ViewPersonPage() {
             </h2>
             <div className="space-y-1">
               {person.phone && (
-                <p className="font-body text-sm text-[var(--color-ink)]/80">
+                <p className="font-body text-sm text-[var(--color-ink)]/80 break-words">
                   Phone: {person.phone}
                 </p>
               )}
               {person.email && (
-                <p className="font-body text-sm text-[var(--color-ink)]/80">
+                <p className="font-body text-sm text-[var(--color-ink)]/80 break-words">
                   Email: {person.email}
                 </p>
               )}
               {person.whatsapp && (
-                <p className="font-body text-sm text-[var(--color-ink)]/80">
+                <p className="font-body text-sm text-[var(--color-ink)]/80 break-words">
                   WhatsApp: {person.whatsapp}
                 </p>
               )}
@@ -511,7 +512,7 @@ export default function ViewPersonPage() {
 
         {/* Medical — private */}
         {(person.blood_group || person.allergies || person.medical_notes) && (
-          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
             <h2 className="font-display text-base font-semibold text-[var(--color-navy)] mb-3 flex items-center gap-2">
               <FontAwesomeIcon
                 icon={faHeartPulse}
@@ -542,7 +543,7 @@ export default function ViewPersonPage() {
         {/* Death info */}
         {person.is_deceased &&
           (person.death_place || person.burial_location) && (
-            <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+            <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
               <h2 className="font-display text-base font-semibold text-[var(--color-navy)] mb-3 flex items-center gap-2">
                 <FontAwesomeIcon
                   icon={faCross}
@@ -568,7 +569,7 @@ export default function ViewPersonPage() {
 
       {/* Photos */}
       {photos.length > 0 && (
-        <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 print:border-none print:bg-transparent print:px-0">
+        <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 print:border-none print:bg-transparent print:px-0">
           <h2 className="font-display text-lg font-semibold text-[var(--color-navy)] mb-4 flex items-center gap-2">
             <FontAwesomeIcon
               icon={faImage}
@@ -576,7 +577,7 @@ export default function ViewPersonPage() {
             />
             Photos
           </h2>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {photos.map((photo) => (
               <div
                 key={photo.id}
@@ -595,7 +596,7 @@ export default function ViewPersonPage() {
 
       {/* Documents — hidden from print, admin reference only */}
       {docs.length > 0 && (
-        <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 no-print">
+        <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 no-print">
           <h2 className="font-display text-lg font-semibold text-[var(--color-navy)] mb-4 flex items-center gap-2">
             <FontAwesomeIcon
               icon={faFileLines}
@@ -607,7 +608,7 @@ export default function ViewPersonPage() {
             {docs.map((doc) => (
               <li
                 key={doc.id}
-                className="font-body text-sm text-[var(--color-ink)]/80"
+                className="font-body text-sm text-[var(--color-ink)]/80 break-words"
               >
                 {doc.name}
               </li>
@@ -624,7 +625,7 @@ export default function ViewPersonPage() {
 
       {/* History — hidden from print */}
       {history.length > 0 && (
-        <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 no-print">
+        <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 sm:p-6 no-print">
           <h2 className="font-display text-lg font-semibold text-[var(--color-navy)] mb-4 flex items-center gap-2">
             <FontAwesomeIcon
               icon={faClockRotateLeft}
@@ -636,7 +637,7 @@ export default function ViewPersonPage() {
             {history.map((h) => (
               <li
                 key={h.id}
-                className="flex items-start justify-between gap-3 pb-3 border-b border-[var(--color-navy)]/5 last:border-0 last:pb-0"
+                className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3 pb-3 border-b border-[var(--color-navy)]/5 last:border-0 last:pb-0"
               >
                 <span className="font-body text-sm text-[var(--color-ink)]/80">
                   {h.text}
