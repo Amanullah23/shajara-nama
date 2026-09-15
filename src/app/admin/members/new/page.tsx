@@ -169,7 +169,7 @@ function AddPersonForm() {
       const path = `avatars/${Date.now()}-${avatarFile.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
       const { error: uploadError } = await supabase.storage
         .from("photos")
-        .upload(path, avatarFile);
+        .upload(path, avatarFile, { cacheControl: "31536000", upsert: false });
       if (uploadError) {
         setSaving(false);
         setError(`Photo upload failed: ${uploadError.message}`);

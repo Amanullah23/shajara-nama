@@ -4,11 +4,13 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import ScrollReveal from "@/components/ScrollReveal";
 import {
   faUser,
   faMagnifyingGlass,
   faExpand,
+  faArrowsUpDownLeftRight,
+  faHandPointer,
+  faCircleDot,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "@/lib/supabase";
 
@@ -231,20 +233,20 @@ export default function TreePreview() {
           style={{ overflow: "visible" }}
         >
           <div
-            onMouseEnter={(e) => {
+            onMouseEnter={(e) =>
               setHovered({
                 name: nodeDatum.name,
                 years,
                 birthPlace,
                 x: e.clientX,
                 y: e.clientY,
-              });
-            }}
-            onMouseMove={(e) => {
+              })
+            }
+            onMouseMove={(e) =>
               setHovered((prev) =>
                 prev ? { ...prev, x: e.clientX, y: e.clientY } : prev,
-              );
-            }}
+              )
+            }
             onMouseLeave={() => setHovered(null)}
             onClick={() => {
               setSelectedId(id);
@@ -260,9 +262,11 @@ export default function TreePreview() {
               borderRadius: "16px",
               background: "white",
               border: isSelected
-                ? "2px solid var(--color-gold)"
-                : "1px solid rgba(15,31,61,0.15)",
-              boxShadow: isSelected ? "0 4px 12px rgba(15,31,61,0.15)" : "none",
+                ? "2px solid var(--color-emerald)"
+                : "1px solid rgba(15,31,61,0.12)",
+              boxShadow: isSelected
+                ? "0 4px 14px rgba(27,75,58,0.15)"
+                : "0 1px 2px rgba(15,31,61,0.04)",
               width: "124px",
             }}
           >
@@ -272,7 +276,7 @@ export default function TreePreview() {
                 height: "34px",
                 borderRadius: "50%",
                 overflow: "hidden",
-                background: "rgba(15,31,61,0.08)",
+                background: "rgba(27,75,58,0.08)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -288,15 +292,15 @@ export default function TreePreview() {
               ) : (
                 <FontAwesomeIcon
                   icon={faUser}
-                  style={{ fontSize: "11px", color: "var(--color-gold)" }}
+                  style={{ fontSize: "11px", color: "var(--color-navy)" }}
                 />
               )}
             </div>
             <span
               style={{
                 fontSize: "11px",
-                fontWeight: 500,
-                color: "var(--color-navy)",
+                fontWeight: 600,
+                color: "var(--color-ink)",
                 textAlign: "center",
                 lineHeight: 1.2,
               }}
@@ -304,7 +308,7 @@ export default function TreePreview() {
               {nodeDatum.name}
             </span>
             {years && (
-              <span style={{ fontSize: "9px", color: "rgba(28,27,24,0.5)" }}>
+              <span style={{ fontSize: "9px", color: "rgba(26,46,40,0.5)" }}>
                 {years}
               </span>
             )}
@@ -315,7 +319,7 @@ export default function TreePreview() {
           <circle
             r={5}
             cy={46}
-            fill="var(--color-gold)"
+            fill="var(--color-emerald)"
             stroke="white"
             strokeWidth={1.5}
             style={{ cursor: "pointer" }}
@@ -332,114 +336,133 @@ export default function TreePreview() {
   return (
     <section
       id="tree"
-      className="py-20 md:py-28 px-4 md:px-8 bg-[var(--color-navy)]/[0.03]"
+      className="py-20 md:py-28 px-4 md:px-8 bg-[var(--color-navy)]/[0.025]"
     >
-      <ScrollReveal>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="font-body text-xs tracking-wide uppercase text-[var(--color-maroon)]">
-              See It In Action
-            </span>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold text-[var(--color-navy)] mt-3">
-              Your family, mapped generation by generation
-            </h2>
-            <p className="font-body text-[var(--color-ink)]/70 mt-4">
-              {isSample
-                ? "A sample preview below — the real tree fills in as your family's names are added."
-                : "The real family tree, built from names your family has added."}
-            </p>
-          </div>
-
-          {!loading && !treeDisabled && treeData && (
-            <div className="relative max-w-sm mx-auto mb-6">
-              <FontAwesomeIcon
-                icon={faMagnifyingGlass}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-navy)]/40 text-sm"
-              />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search for a person..."
-                className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/15 rounded-xl pl-11 pr-4 py-2.5 focus:outline-none focus:border-[var(--color-gold)] transition-colors"
-              />
-              {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--color-navy)]/10 rounded-xl shadow-lg z-10 overflow-hidden">
-                  {searchResults.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        setSelectedId(p.id);
-                        setSearch("");
-                      }}
-                      className="w-full text-left font-body text-sm text-[var(--color-ink)]/85 px-4 py-2.5 hover:bg-[var(--color-navy)]/5"
-                    >
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div
-            ref={containerRef}
-            className="bg-white/70 border border-[var(--color-navy)]/10 rounded-3xl overflow-hidden relative"
-            style={{ height: "500px" }}
-          >
-            {loading ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <p className="font-body text-sm text-[var(--color-ink)]/50">
-                  Loading tree...
-                </p>
-              </div>
-            ) : treeDisabled ? (
-              <div className="w-full h-full flex items-center justify-center p-6">
-                <p className="font-body text-sm text-[var(--color-ink)]/50 text-center max-w-sm">
-                  The family tree preview is currently private. Family members
-                  can view it after logging in.
-                </p>
-              </div>
-            ) : (
-              <>
-                {treeData && (
-                  <Tree
-                    key={resetKey}
-                    data={treeData}
-                    translate={translate}
-                    orientation="vertical"
-                    pathFunc="step"
-                    collapsible
-                    zoomable
-                    draggable
-                    scaleExtent={{ min: 0.3, max: 2 }}
-                    nodeSize={{ x: 150, y: 110 }}
-                    separation={{ siblings: 1, nonSiblings: 1.3 }}
-                    renderCustomNodeElement={renderNode}
-                  />
-                )}
-                <button
-                  onClick={() => setResetKey((k) => k + 1)}
-                  className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white border border-[var(--color-navy)]/10 flex items-center justify-center text-[var(--color-navy)] hover:bg-[var(--color-navy)]/5 shadow-sm"
-                  aria-label="Reset zoom"
-                  title="Fit to screen"
-                >
-                  <FontAwesomeIcon icon={faExpand} className="text-sm" />
-                </button>
-              </>
-            )}
-          </div>
-
-          <p className="text-center font-body text-xs text-[var(--color-ink)]/50 mt-4">
-            Scroll or pinch to zoom, drag to pan, click the gold dot to expand
-            or collapse a branch.
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <span className="font-body text-xs font-semibold tracking-[0.2em] uppercase text-[var(--color-gold)]">
+            See It In Action
+          </span>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-[var(--color-ink)] mt-3">
+            Your Family, Mapped Generation by Generation
+          </h2>
+          <p className="font-body text-[var(--color-ink)]/60 mt-4">
+            {isSample
+              ? "A sample preview below — the real tree fills in as your family's names are added."
+              : "The real family tree, built from names your family has added."}
           </p>
         </div>
-      </ScrollReveal>
+
+        {!loading && !treeDisabled && treeData && (
+          <div className="relative max-w-sm mx-auto mb-6">
+            <FontAwesomeIcon
+              icon={faMagnifyingGlass}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-ink)]/35 text-sm"
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search for a person..."
+              className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/10 rounded-full pl-11 pr-4 py-3 focus:outline-none focus:border-[var(--color-emerald)]/50 focus:ring-2 focus:ring-[var(--color-emerald)]/10 transition-all"
+            />
+            {searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--color-navy)]/10 rounded-2xl shadow-lg z-10 overflow-hidden">
+                {searchResults.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setSelectedId(p.id);
+                      setSearch("");
+                    }}
+                    className="w-full text-left font-body text-sm text-[var(--color-ink)]/85 px-4 py-2.5 hover:bg-[var(--color-emerald)]/5"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div
+          ref={containerRef}
+          className="bg-white border border-[var(--color-navy)]/8 rounded-3xl overflow-hidden relative shadow-sm"
+          style={{ height: "500px" }}
+        >
+          {loading ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <p className="font-body text-sm text-[var(--color-ink)]/50">
+                Loading tree...
+              </p>
+            </div>
+          ) : treeDisabled ? (
+            <div className="w-full h-full flex items-center justify-center p-6">
+              <p className="font-body text-sm text-[var(--color-ink)]/50 text-center max-w-sm">
+                The family tree preview is currently private. Family members can
+                view it after logging in.
+              </p>
+            </div>
+          ) : (
+            <>
+              {treeData && (
+                <Tree
+                  key={resetKey}
+                  data={treeData}
+                  translate={translate}
+                  orientation="vertical"
+                  pathFunc="step"
+                  collapsible
+                  zoomable
+                  draggable
+                  scaleExtent={{ min: 0.3, max: 2 }}
+                  nodeSize={{ x: 150, y: 110 }}
+                  separation={{ siblings: 1, nonSiblings: 1.3 }}
+                  renderCustomNodeElement={renderNode}
+                />
+              )}
+              <button
+                onClick={() => setResetKey((k) => k + 1)}
+                className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white border border-[var(--color-navy)]/10 flex items-center justify-center text-[var(--color-navy)] hover:bg-[var(--color-navy)]/5 shadow-sm transition-colors"
+                aria-label="Reset zoom"
+                title="Fit to screen"
+              >
+                <FontAwesomeIcon icon={faExpand} className="text-sm" />
+              </button>
+            </>
+          )}
+        </div>
+
+        {!loading && !treeDisabled && (
+          <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 mt-8">
+            <span className="inline-flex items-center gap-2 font-body text-xs text-[var(--color-ink)]/55">
+              <FontAwesomeIcon
+                icon={faArrowsUpDownLeftRight}
+                className="text-[var(--color-emerald)] text-[11px]"
+              />
+              Scroll or pinch to zoom, drag to pan
+            </span>
+            <span className="inline-flex items-center gap-2 font-body text-xs text-[var(--color-ink)]/55">
+              <FontAwesomeIcon
+                icon={faCircleDot}
+                className="text-[var(--color-emerald)] text-[11px]"
+              />
+              Click the green dot to expand a branch
+            </span>
+            <span className="inline-flex items-center gap-2 font-body text-xs text-[var(--color-ink)]/55">
+              <FontAwesomeIcon
+                icon={faHandPointer}
+                className="text-[var(--color-emerald)] text-[11px]"
+              />
+              Click anyone to view their profile
+            </span>
+          </div>
+        )}
+      </div>
 
       {hovered && (
         <div
-          className="fixed z-50 pointer-events-none bg-[var(--color-navy)] text-[var(--color-ivory)] rounded-xl px-3 py-2 shadow-lg"
+          className="fixed z-50 pointer-events-none bg-[var(--color-navy)] text-white rounded-xl px-3 py-2 shadow-lg"
           style={{
             left: hovered.x + 14,
             top: hovered.y + 14,
@@ -448,17 +471,17 @@ export default function TreePreview() {
         >
           <p className="font-body text-xs font-medium">{hovered.name}</p>
           {hovered.years && (
-            <p className="font-body text-[10px] text-[var(--color-ivory)]/70">
+            <p className="font-body text-[10px] text-white/70">
               {hovered.years}
             </p>
           )}
           {hovered.birthPlace && (
-            <p className="font-body text-[10px] text-[var(--color-ivory)]/70">
+            <p className="font-body text-[10px] text-white/70">
               Born in {hovered.birthPlace}
             </p>
           )}
           <p className="font-body text-[10px] text-[var(--color-gold)] mt-1">
-            Click for full profile →
+            Click for full profile &rarr;
           </p>
         </div>
       )}

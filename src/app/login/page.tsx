@@ -225,7 +225,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 bg-[var(--color-navy)] text-[var(--color-ivory)] font-body text-sm font-medium px-6 py-3 rounded-full hover:bg-[var(--color-navy-light)] transition-colors disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center cursor-pointer gap-2 bg-[var(--color-navy)] text-[var(--color-ivory)] font-body text-sm font-medium px-6 py-3 rounded-full hover:bg-[var(--color-navy-light)] transition-colors disabled:opacity-60"
             >
               {loading ? "Signing in..." : "Sign In"}
               {!loading && (

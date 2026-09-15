@@ -8,16 +8,17 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const NAV_LINKS = [
-  { label: "Home", href: "/#home" },
-  { label: "Features", href: "/#features" },
-  { label: "Family Tree", href: "/#tree" },
-  { label: "Gallery", href: "/#gallery" },
-  { label: "Blog", href: "/blog" },
-  { label: "Contact", href: "/#contact" },
+  { label: "Home", href: "/#home", ready: true },
+  { label: "Family Tree", href: "/#tree", ready: true },
+  { label: "Timeline", href: "/timeline", ready: true },
+  { label: "Photos", href: "/#gallery", ready: true },
+  { label: "Places", href: "/places", ready: true },
+  { label: "About", href: "/#features", ready: true },
 ];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const router = useRouter();
   const [checkedAuth, setCheckedAuth] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -30,7 +31,6 @@ export default function Navbar() {
         setCheckedAuth(true);
         return;
       }
-
       setIsLoggedIn(true);
 
       const { data: roleData } = await supabase
@@ -46,6 +46,12 @@ export default function Navbar() {
       setCheckedAuth(true);
     }
     checkAuth();
+
+    function onScroll() {
+      setScrolled(window.scrollY > 8);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   async function handleLogout() {
@@ -54,49 +60,99 @@ export default function Navbar() {
     router.refresh();
   }
 
+  function handleAnchorClick(
+    e: React.MouseEvent,
+    href: string,
+    ready: boolean,
+    closeMobile: boolean,
+  ) {
+    if (!ready) {
+      e.preventDefault();
+      return;
+    }
+    if (!href.includes("#")) {
+      if (closeMobile) setIsOpen(false);
+      return;
+    }
+    e.preventDefault();
+    if (closeMobile) setIsOpen(false);
+    const targetId = href.split("#")[1];
+
+    const jump = () => {
+      if (window.location.pathname !== "/") {
+        window.location.href = href;
+        return;
+      }
+      document
+        .getElementById(targetId)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    closeMobile ? setTimeout(jump, 320) : jump();
+  }
+
   return (
-    <header className="sticky top-0 z-50 bg-[var(--color-ivory)]/95 backdrop-blur-sm border-b border-[var(--color-navy)]/10">
-      <nav className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-8 py-4">
+    <header
+      className={`sticky top-0 z-50 bg-white/90 backdrop-blur-md transition-shadow duration-300 ${
+        scrolled ? "shadow-sm shadow-[var(--color-navy)]/5" : ""
+      }`}
+    >
+      <nav className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-6 h-16">
         {/* Logo */}
-        <a href="/#home" className="flex items-center gap-2 group">
-          <FontAwesomeIcon
-            icon={faTree}
-            className="text-2xl text-[var(--color-gold)] group-hover:rotate-6 transition-transform duration-300"
-          />
-          <span className="font-display text-xl font-semibold text-[var(--color-navy)]">
+        <a
+          href="/#home"
+          onClick={(e) => handleAnchorClick(e, "/#home", true, false)}
+          className="flex items-center gap-2 shrink-0"
+        >
+          <div className="w-9 h-9 rounded-xl bg-[var(--color-navy)] flex items-center justify-center">
+            <FontAwesomeIcon icon={faTree} className="text-sm text-white" />
+          </div>
+          <span className="font-display text-lg font-bold text-[var(--color-ink)] hidden sm:block">
             Shajara Nama
           </span>
         </a>
 
         {/* Desktop links */}
-        <ul className="hidden md:flex items-center gap-8">
+        <ul className="hidden md:flex items-center gap-1">
           {NAV_LINKS.map((link) => (
-            <li key={link.href}>
+            <li key={link.label}>
               <a
                 href={link.href}
-                className="font-body text-sm text-[var(--color-ink)]/80 hover:text-[var(--color-navy)] relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-[var(--color-gold)] after:transition-all after:duration-300 hover:after:w-full"
+                onClick={(e) =>
+                  handleAnchorClick(e, link.href, link.ready, false)
+                }
+                className={`inline-flex items-center gap-1.5 font-body text-sm px-3.5 py-2 rounded-full transition-colors whitespace-nowrap ${
+                  link.ready
+                    ? "text-[var(--color-ink)]/70 hover:text-[var(--color-navy)] hover:bg-[var(--color-navy)]/5 cursor-pointer"
+                    : "text-[var(--color-ink)]/30 cursor-default"
+                }`}
               >
                 {link.label}
+                {!link.ready && (
+                  <span className="font-body text-[9px] font-semibold text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-1.5 py-0.5 rounded-full">
+                    Soon
+                  </span>
+                )}
               </a>
             </li>
           ))}
         </ul>
 
-        {/* Desktop CTA — three states: loading (blank placeholder) → logged-in → logged-out */}
-        <div className="hidden md:flex items-center gap-3 min-w-[180px] justify-end">
+        {/* Right side */}
+        <div className="hidden md:flex items-center gap-2 shrink-0">
           {!checkedAuth ? (
-            <div className="w-full h-9" aria-hidden="true" />
+            <div className="w-32 h-9" aria-hidden="true" />
           ) : isLoggedIn ? (
             <>
               <Link
                 href={homeHref}
-                className="text-sm font-medium text-[var(--color-navy)] hover:text-[var(--color-gold)] transition-colors"
+                className="font-body text-sm font-medium text-[var(--color-navy)] px-4 py-2 rounded-full hover:bg-[var(--color-navy)]/5 transition-colors"
               >
-                {homeHref === "/dashboard" ? "My Dashboard" : "Admin Panel"}
+                {homeHref === "/dashboard" ? "Dashboard" : "Admin Panel"}
               </Link>
               <button
                 onClick={handleLogout}
-                className="bg-[var(--color-maroon)] text-[var(--color-ivory)] text-sm font-medium px-5 py-2.5 rounded-full hover:opacity-90 transition-opacity"
+                className="font-body text-sm font-medium text-white bg-[var(--color-navy)] px-4 py-2 rounded-full hover:bg-[var(--color-navy-light)] transition-colors"
               >
                 Log Out
               </button>
@@ -105,13 +161,14 @@ export default function Navbar() {
             <>
               <Link
                 href="/login"
-                className="text-sm font-medium text-[var(--color-navy)] hover:text-[var(--color-gold)] transition-colors"
+                className="font-body text-sm font-medium text-[var(--color-navy)] px-4 py-2 rounded-full hover:bg-[var(--color-navy)]/5 transition-colors"
               >
-                Login
+                Log In
               </Link>
               <a
                 href="/#contact"
-                className="bg-[var(--color-navy)] text-[var(--color-ivory)] text-sm font-medium px-5 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors duration-300"
+                onClick={(e) => handleAnchorClick(e, "/#contact", true, false)}
+                className="font-body text-sm font-medium text-white bg-[var(--color-navy)] px-4 py-2 rounded-full hover:bg-[var(--color-navy-light)] transition-colors"
               >
                 Get Started
               </a>
@@ -119,99 +176,90 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile hamburger */}
+        {/* Mobile toggle */}
         <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-[var(--color-navy)] text-2xl"
+          onClick={() => setIsOpen((v) => !v)}
+          className="md:hidden w-9 h-9 rounded-full flex items-center justify-center text-[var(--color-navy)] hover:bg-[var(--color-navy)]/5 transition-colors shrink-0"
           aria-label={isOpen ? "Close menu" : "Open menu"}
           aria-expanded={isOpen}
         >
-          <FontAwesomeIcon icon={isOpen ? faXmark : faBars} />
+          <FontAwesomeIcon
+            icon={isOpen ? faXmark : faBars}
+            className="text-lg"
+          />
         </button>
       </nav>
 
       {/* Mobile menu */}
       <div
-        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-          isOpen ? "max-h-96" : "max-h-0"
+        className={`md:hidden overflow-hidden transition-[max-height] duration-300 ease-in-out bg-white border-t border-[var(--color-navy)]/5 ${
+          isOpen ? "max-h-[26rem]" : "max-h-0"
         }`}
       >
-        <ul className="flex flex-col px-4 pb-4 gap-1">
+        <ul className="flex flex-col px-4 py-2">
           {NAV_LINKS.map((link) => (
-            <li key={link.href}>
+            <li key={link.label}>
               <a
                 href={link.href}
-                onClick={(e) => {
-                  const isHashLink = link.href.includes("#");
-
-                  if (!isHashLink) {
-                    // Plain page link (e.g. /blog, /login) — let it navigate normally,
-                    // just close the menu first so it doesn't stay open after the jump
-                    setIsOpen(false);
-                    return;
-                  }
-
-                  e.preventDefault();
-                  setIsOpen(false);
-
-                  const targetId = link.href.split("#")[1];
-
-                  setTimeout(() => {
-                    if (window.location.pathname !== "/") {
-                      window.location.href = link.href;
-                      return;
-                    }
-                    document
-                      .getElementById(targetId)
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }, 320);
-                }}
-                className="block py-3 font-body text-[var(--color-ink)]/80 hover:text-[var(--color-navy)] border-b border-[var(--color-navy)]/5"
+                onClick={(e) =>
+                  handleAnchorClick(e, link.href, link.ready, true)
+                }
+                className={`flex items-center justify-between py-3.5 font-body text-[15px] border-b border-[var(--color-navy)]/5 ${
+                  link.ready
+                    ? "text-[var(--color-ink)]/80"
+                    : "text-[var(--color-ink)]/30"
+                }`}
               >
                 {link.label}
+                {!link.ready && (
+                  <span className="font-body text-[9px] font-semibold text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-1.5 py-0.5 rounded-full">
+                    Soon
+                  </span>
+                )}
               </a>
             </li>
           ))}
-          <li className="pt-3 space-y-2">
-            {!checkedAuth ? null : isLoggedIn ? (
-              <>
-                <Link
-                  href={homeHref}
-                  onClick={() => setIsOpen(false)}
-                  className="block text-center border border-[var(--color-navy)]/20 text-[var(--color-navy)] font-medium px-5 py-2.5 rounded-full"
-                >
-                  {homeHref === "/dashboard" ? "My Dashboard" : "Admin Panel"}
-                </Link>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    handleLogout();
-                  }}
-                  className="w-full text-center bg-[var(--color-maroon)] text-[var(--color-ivory)] font-medium px-5 py-2.5 rounded-full"
-                >
-                  Log Out
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  onClick={() => setIsOpen(false)}
-                  className="block text-center border border-[var(--color-navy)]/20 text-[var(--color-navy)] font-medium px-5 py-2.5 rounded-full"
-                >
-                  Login
-                </Link>
-                <a
-                  href="/#contact"
-                  onClick={() => setIsOpen(false)}
-                  className="block text-center bg-[var(--color-navy)] text-[var(--color-ivory)] font-medium px-5 py-2.5 rounded-full"
-                >
-                  Get Started
-                </a>
-              </>
-            )}
-          </li>
         </ul>
+
+        <div className="px-4 pb-5 pt-2 flex flex-col gap-2.5">
+          {!checkedAuth ? null : isLoggedIn ? (
+            <>
+              <Link
+                href={homeHref}
+                onClick={() => setIsOpen(false)}
+                className="text-center font-body text-sm font-medium text-[var(--color-navy)] border border-[var(--color-navy)]/15 py-3 rounded-full"
+              >
+                {homeHref === "/dashboard" ? "Dashboard" : "Admin Panel"}
+              </Link>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  handleLogout();
+                }}
+                className="font-body text-sm font-medium text-white bg-[var(--color-navy)] py-3 rounded-full"
+              >
+                Log Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onClick={() => setIsOpen(false)}
+                className="text-center font-body text-sm font-medium text-[var(--color-navy)] border border-[var(--color-navy)]/15 py-3 rounded-full"
+              >
+                Log In
+              </Link>
+              <a
+                href="/#contact"
+                onClick={(e) => handleAnchorClick(e, "/#contact", true, true)}
+                className="text-center font-body text-sm font-medium text-white bg-[var(--color-navy)] py-3 rounded-full"
+              >
+                Get Started
+              </a>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

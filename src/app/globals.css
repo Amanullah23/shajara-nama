@@ -1,17 +1,23 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-navy: #0f1f3d;
-  --color-navy-light: #1a3363;
-  --color-gold: #c9a227;
-  --color-gold-light: #e0c463;
-  --color-maroon: #7a2e2e;
-  --color-ivory: #f7f3e8;
-  --color-ink: #1c1b18;
-  --color-emerald: #1f4d3a;
+  --color-navy: #1b4b3a; /* was deep navy — now deep forest green (primary brand color) */
+  --color-navy-light: #256b52; /* hover state for navy elements */
+  --color-gold: #2c8c63; /* was gold accent — now a brighter secondary green */
+  --color-gold-light: #4faf82; /* lighter accent hover */
+  --color-maroon: #7a2e2e; /* unchanged — still used for delete/error states */
+  --color-ivory: #f4f8f6; /* was warm ivory — now a pale mint-white background */
+  --color-ink: #1a2e28; /* body text — slightly green-tinted charcoal */
+  --color-emerald: #1f9d63; /* "living"/success badges — brighter green, distinct from navy */
 
   --font-display: var(--font-fraunces);
   --font-body: var(--font-inter);
+}
+
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -69,4 +75,32 @@ section[id] {
 }
 .sidebar-scroll:hover::-webkit-scrollbar-thumb {
   background: rgba(247, 243, 232, 0.25);
+}
+
+@keyframes heroFloat1 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(3rem, 2rem) scale(1.08);
+  }
+}
+@keyframes heroFloat2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-2.5rem, 3rem) scale(1.1);
+  }
+}
+@keyframes heroFloat3 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(2rem, -2.5rem) scale(1.05);
+  }
 }

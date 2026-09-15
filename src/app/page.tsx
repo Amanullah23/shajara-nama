@@ -6,6 +6,8 @@ import Gallery from "@/components/Gallery";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import ScrollToHash from "@/components/ScrollToHash";
+import DiscoverMore from "@/components/DiscoverMore";
+import CtaBanner from "@/components/CtaBanner";
 
 export default function Home() {
   return (
@@ -14,8 +16,11 @@ export default function Home() {
       <ScrollToHash />
       <Hero />
       <Features />
+      <DiscoverMore />
       <TreePreview />
       <Gallery />
+
+      <CtaBanner />
       <Contact />
       <Footer />
     </main>
