@@ -109,8 +109,8 @@ export default function MediaPage() {
       const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("photos")
-        .upload(path, avatarFile, { cacheControl: "31536000", upsert: false });
+        .from(bucket)
+        .upload(path, file, { cacheControl: "31536000", upsert: false });
 
       if (uploadError) {
         alert(`Failed to upload ${file.name}: ${uploadError.message}`);
