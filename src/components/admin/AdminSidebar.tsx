@@ -12,7 +12,6 @@ import {
   faSitemap,
   faFolderTree,
   faImages,
-  faFileExport,
   faCalendarDays,
   faUserShield,
   faGear,
@@ -24,6 +23,7 @@ import {
   faBook,
   faClipboardList,
   faFileExcel,
+  faFileExport,
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "@/lib/supabase";
@@ -43,12 +43,10 @@ type NavGroup = {
   items: NavItem[];
 };
 
-// Top-level items — always visible on their own, not tucked into a group
 const TOP_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/admin", icon: faGauge },
 ];
 
-// Grouped items — organized by theme, collapsible to save space
 const NAV_GROUPS: NavGroup[] = [
   {
     id: "family",
@@ -60,15 +58,15 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Family Tree", href: "/admin/tree", icon: faSitemap },
       { label: "Branches", href: "/admin/branches", icon: faFolderTree },
       {
-        label: "GEDCOM",
-        href: "/admin/gedcom",
-        icon: faFileExport,
-        superAdminOnly: true,
-      },
-      {
         label: "Bulk Import",
         href: "/admin/import",
         icon: faFileExcel,
+        superAdminOnly: true,
+      },
+      {
+        label: "GEDCOM",
+        href: "/admin/gedcom",
+        icon: faFileExport,
         superAdminOnly: true,
       },
     ],
@@ -105,7 +103,6 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-// Bottom-level items — help/reference, always visible
 const BOTTOM_ITEMS: NavItem[] = [
   { label: "User Guide", href: "/admin/guide", icon: faBook },
 ];
@@ -147,8 +144,6 @@ export default function AdminSidebar() {
     if (saved === "true") setCollapsed(true);
   }, []);
 
-  // Auto-expand whichever group contains the current page, so the active
-  // link is never hidden inside a collapsed group on page load/navigation
   useEffect(() => {
     const activeGroup = NAV_GROUPS.find((g) =>
       g.items.some((item) => item.href === pathname),
@@ -198,7 +193,7 @@ export default function AdminSidebar() {
         } ${
           active
             ? "bg-[var(--color-gold)] text-[var(--color-navy)] font-medium"
-            : "text-[var(--color-ivory)]/70 hover:bg-[var(--color-ivory)]/10 hover:text-[var(--color-ivory)]"
+            : "text-white/70 hover:bg-white/10 hover:text-white"
         }`}
       >
         <FontAwesomeIcon icon={item.icon} className="w-4 text-sm shrink-0" />
@@ -215,7 +210,6 @@ export default function AdminSidebar() {
         </li>
       ))}
 
-      {/* Collapsed mode: flatten groups into a plain icon list (no nesting/expand UI at that width) */}
       {collapsed
         ? visibleGroups
             .flatMap((g) => g.items)
@@ -230,7 +224,7 @@ export default function AdminSidebar() {
               <li key={group.id}>
                 <button
                   onClick={() => toggleGroup(group.id)}
-                  className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl font-body text-xs uppercase tracking-wide text-[var(--color-ivory)]/50 hover:text-[var(--color-ivory)]/80 hover:bg-[var(--color-ivory)]/5 transition-colors"
+                  className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl font-body text-xs uppercase tracking-wide text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
                 >
                   <span className="flex items-center gap-2.5">
                     <FontAwesomeIcon
@@ -257,28 +251,31 @@ export default function AdminSidebar() {
             );
           })}
 
-      <li className="pt-2 mt-2 border-t border-[var(--color-ivory)]/10">
+      <li className="pt-2 mt-2 border-t border-white/10">
         {BOTTOM_ITEMS.map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
+        {!collapsed && (
+          <p className="font-body text-[10px] text-white/30 text-center pt-3 pb-1">
+            v1.0.2.2
+          </p>
+        )}
       </li>
     </ul>
   );
 
   return (
     <>
-      {/* Mobile topbar trigger */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-40 w-10 h-10 rounded-full bg-[var(--color-navy)] text-[var(--color-ivory)] flex items-center justify-center shadow-lg"
+        className="md:hidden fixed top-4 left-4 z-40 w-10 h-10 rounded-full bg-[var(--color-navy)] text-white flex items-center justify-center shadow-lg"
         aria-label="Open admin menu"
       >
         <FontAwesomeIcon icon={faBars} />
       </button>
 
-      {/* Desktop sidebar */}
       <aside
-        className={`hidden md:flex md:flex-col shrink-0 bg-[var(--color-navy)] py-6 no-print transition-all duration-300 ${
+        className={`hidden md:flex md:flex-col shrink-0 bg-[var(--color-navy)] py-6 no-print transition-all duration-300 h-full ${
           collapsed ? "w-20 px-2" : "w-64 px-4"
         }`}
       >
@@ -290,17 +287,17 @@ export default function AdminSidebar() {
           >
             <FontAwesomeIcon
               icon={faTree}
-              className="text-xl text-[var(--color-gold)] shrink-0"
+              className="text-xl text-white shrink-0"
             />
             {!collapsed && (
-              <span className="font-display text-lg font-semibold text-[var(--color-ivory)] whitespace-nowrap">
+              <span className="font-display text-lg font-semibold text-white whitespace-nowrap">
                 Shajara Nama
               </span>
             )}
           </div>
           <button
             onClick={toggleCollapsed}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--color-ivory)]/60 hover:bg-[var(--color-ivory)]/10 hover:text-[var(--color-ivory)] transition-colors shrink-0"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:bg-white/10 hover:text-white transition-colors shrink-0"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -311,29 +308,24 @@ export default function AdminSidebar() {
           </button>
         </div>
 
-        {/* Scrollable nav area — custom minimal scrollbar, only visible on hover */}
         <div className="sidebar-scroll overflow-y-auto flex-1 pr-1">
           <NavList />
         </div>
       </aside>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="w-72 bg-[var(--color-navy)] px-4 py-6 flex flex-col">
             <div className="flex items-center justify-between px-2 mb-6 shrink-0">
               <div className="flex items-center gap-2">
-                <FontAwesomeIcon
-                  icon={faTree}
-                  className="text-xl text-[var(--color-gold)]"
-                />
-                <span className="font-display text-lg font-semibold text-[var(--color-ivory)]">
+                <FontAwesomeIcon icon={faTree} className="text-xl text-white" />
+                <span className="font-display text-lg font-semibold text-white">
                   Shajara Nama
                 </span>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}
-                className="text-[var(--color-ivory)] text-xl"
+                className="text-white text-xl"
                 aria-label="Close admin menu"
               >
                 <FontAwesomeIcon icon={faXmark} />

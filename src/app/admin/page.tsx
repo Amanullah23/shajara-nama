@@ -278,6 +278,20 @@ export default function AdminDashboard() {
           </div>
         </>
       )}
+
+      <div className="pt-2 pb-2 text-center">
+        <p className="font-body text-xs text-[var(--color-ink)]/40">
+          Developed and designed by{" "}
+          <a
+            href="https://yawari.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--color-ink)]/40 hover:text-[var(--color-emerald)] hover:underline transition-colors"
+          >
+            Amanullah Yawari
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

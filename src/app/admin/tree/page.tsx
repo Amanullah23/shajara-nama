@@ -1777,7 +1777,7 @@ export default function TreeManagerPage() {
                   />
                   <MenuItem
                     icon={faEye}
-                    label="Focus &amp; center"
+                    label="Focus & center"
                     onClick={() => handleFocusCenter(contextMenu.personId)}
                   />
                   <MenuItem
