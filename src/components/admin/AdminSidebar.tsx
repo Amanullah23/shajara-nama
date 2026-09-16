@@ -12,6 +12,7 @@ import {
   faSitemap,
   faFolderTree,
   faImages,
+  faFileExport,
   faCalendarDays,
   faUserShield,
   faGear,
@@ -58,6 +59,12 @@ const NAV_GROUPS: NavGroup[] = [
       { label: "Add Person", href: "/admin/members/new", icon: faUserPlus },
       { label: "Family Tree", href: "/admin/tree", icon: faSitemap },
       { label: "Branches", href: "/admin/branches", icon: faFolderTree },
+      {
+        label: "GEDCOM",
+        href: "/admin/gedcom",
+        icon: faFileExport,
+        superAdminOnly: true,
+      },
       {
         label: "Bulk Import",
         href: "/admin/import",

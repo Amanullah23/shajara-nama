@@ -53,13 +53,13 @@ export default function Gallery() {
       <ScrollReveal>
         <div className="max-w-6xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="font-body text-xs tracking-wide uppercase text-[var(--color-maroon)]">
+            <span className="font-body text-xs font-semibold tracking-[0.2em] uppercase text-[var(--color-gold)]">
               Memories
             </span>
-            <h2 className="font-display text-3xl md:text-4xl font-semibold text-[var(--color-navy)] mt-3">
-              Moments worth keeping
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-[var(--color-ink)] mt-3">
+              Moments Worth Keeping
             </h2>
-            <p className="font-body text-[var(--color-ink)]/70 mt-4">
+            <p className="font-body text-[var(--color-ink)]/60 mt-4">
               Photos, letters, and keepsakes — organized and safe for every
               generation to revisit.
             </p>
@@ -84,7 +84,7 @@ export default function Gallery() {
                 <button
                   key={photo.id}
                   onClick={() => setActive(photo)}
-                  className="group relative w-full rounded-2xl overflow-hidden bg-[var(--color-navy)]/10 border border-[var(--color-navy)]/10 block break-inside-avoid"
+                  className="group relative w-full rounded-2xl overflow-hidden bg-[var(--color-navy)]/8 border border-[var(--color-navy)]/8 block break-inside-avoid hover:border-[var(--color-emerald)]/30 transition-colors"
                 >
                   <img
                     src={photo.url}
@@ -92,7 +92,7 @@ export default function Gallery() {
                     className="w-full h-auto block"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy)]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                    <span className="font-body text-sm text-[var(--color-ivory)] text-left">
+                    <span className="font-body text-sm text-white text-left">
                       {photo.caption}
                     </span>
                   </div>
@@ -110,7 +110,7 @@ export default function Gallery() {
         >
           <button
             onClick={() => setActive(null)}
-            className="absolute top-6 right-6 text-[var(--color-ivory)] text-2xl"
+            className="absolute top-6 right-6 text-white text-2xl hover:text-[var(--color-gold)] transition-colors"
             aria-label="Close"
           >
             <FontAwesomeIcon icon={faXmark} />

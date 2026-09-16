@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import GlobalSearch from "@/components/admin/GlobalSearch";
 import {
   faBell,
   faUser,
@@ -99,6 +100,7 @@ export default function AdminTopbar() {
       </div>
 
       <div className="flex items-center gap-4 ml-12 md:ml-0">
+        <GlobalSearch />
         <Link
           href="/admin/notifications"
           className="relative w-9 h-9 rounded-full bg-[var(--color-navy)]/5 flex items-center justify-center hover:bg-[var(--color-navy)]/10 transition-colors"

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -21,6 +22,13 @@ import {
   faPrint,
   faArrowsLeftRight,
   faRoute,
+  faCrosshairs,
+  faHeart,
+  faChild,
+  faUsers,
+  faSitemap,
+  faUpRightAndDownLeftFromCenter,
+  faImage,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "@/lib/supabase";
 import DeleteConfirmModal from "@/components/admin/DeleteConfirmModal";
@@ -35,6 +43,7 @@ type PersonRow = {
   is_deceased: boolean;
   death_date: string | null;
   avatar_path: string | null;
+  gender: string | null;
 };
 
 type RawNode = {
@@ -44,6 +53,7 @@ type RawNode = {
     years: string;
     avatarPath: string;
     birthPlace: string;
+    gender?: string;
     virtual?: string;
   };
   children?: RawNode[];
@@ -60,6 +70,91 @@ function formatYears(person: PersonRow) {
   if (person.is_deceased && dy) return `${by}–${dy}`;
   if (person.is_deceased) return `d. ${by}`;
   return `b. ${by}`;
+}
+// Static (non-interactive) chart node with gender-based coloring — used only for the
+// expanded/printable view, since the interactive SVG tree can't be reliably printed or exported.
+function StaticChartNode({
+  node,
+  isRoot = false,
+}: {
+  node: RawNode;
+  isRoot?: boolean;
+}) {
+  const isVirtual = node.attributes?.virtual === "true";
+  if (isVirtual) {
+    return (
+      <div className="flex gap-10">
+        {(node.children ?? []).map((child) => (
+          <StaticChartNode key={child.attributes.id} node={child} isRoot />
+        ))}
+      </div>
+    );
+  }
+
+  const avatarUrl = node.attributes.avatarPath
+    ? supabase.storage.from("photos").getPublicUrl(node.attributes.avatarPath)
+        .data.publicUrl
+    : null;
+
+  const gender = node.attributes.gender;
+  const genderStyle =
+    gender === "male"
+      ? {
+          border: "2px solid var(--color-navy)",
+          background: "rgba(27,75,58,0.05)",
+        }
+      : gender === "female"
+        ? { border: "2px solid #B5487A", background: "rgba(181,72,122,0.06)" }
+        : { border: "1px solid rgba(15,31,61,0.15)", background: "white" };
+
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className="flex flex-col items-center gap-1.5 rounded-2xl px-4 py-3 break-inside-avoid"
+        style={{ minWidth: "140px", ...genderStyle }}
+      >
+        <div className="w-11 h-11 rounded-full overflow-hidden bg-[var(--color-navy)]/10 flex items-center justify-center shrink-0">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <FontAwesomeIcon
+              icon={faUser}
+              className="text-sm text-[var(--color-navy)]/30"
+            />
+          )}
+        </div>
+        <span className="font-body text-sm font-medium text-center whitespace-nowrap text-[var(--color-ink)]">
+          {node.name}
+        </span>
+        {node.attributes.years && (
+          <span className="font-body text-xs text-[var(--color-ink)]/50">
+            {node.attributes.years}
+          </span>
+        )}
+      </div>
+
+      {node.children && node.children.length > 0 && (
+        <>
+          <div className="w-px h-6 bg-[var(--color-navy)]/20" />
+          <div className="flex gap-8 relative pt-px">
+            <div className="absolute top-0 left-0 right-0 h-px bg-[var(--color-navy)]/20" />
+            {node.children.map((child) => (
+              <div
+                key={child.attributes.id}
+                className="flex flex-col items-center pt-6"
+              >
+                <StaticChartNode node={child} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function filterCollapsed(node: RawNode, collapsed: Set<string>): RawNode {
@@ -160,7 +255,38 @@ function collateralRelationOfAtoB(
   return `${ordinalWord(degree)} Cousin${removedText}`;
 }
 
+function MenuItem({
+  icon,
+  label,
+  onClick,
+  danger = false,
+}: {
+  icon: any;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 font-body text-sm text-left transition-colors ${
+        danger
+          ? "text-[var(--color-maroon)] hover:bg-[var(--color-maroon)]/8"
+          : "text-[var(--color-ink)]/80 hover:bg-[var(--color-emerald)]/8"
+      }`}
+    >
+      <FontAwesomeIcon
+        icon={icon}
+        className={`text-sm w-4 ${danger ? "text-[var(--color-maroon)]" : "text-[var(--color-emerald)]"}`}
+      />
+      {label}
+    </button>
+  );
+}
+
 export default function TreeManagerPage() {
+  const router = useRouter();
+
   const [persons, setPersons] = useState<PersonRow[]>([]);
   const [treeData, setTreeData] = useState<RawNode | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -170,6 +296,9 @@ export default function TreeManagerPage() {
   const [mergeOpen, setMergeOpen] = useState(false);
   const [keepId, setKeepId] = useState("");
   const [dupId, setDupId] = useState("");
+  const [expandedOpen, setExpandedOpen] = useState(false);
+  const [exportingPng, setExportingPng] = useState(false);
+  const expandedRef = useRef<HTMLDivElement>(null);
   const [merging, setMerging] = useState(false);
   const [hovered, setHovered] = useState<{
     name: string;
@@ -185,6 +314,7 @@ export default function TreeManagerPage() {
   const [pendingDelete, setPendingDelete] = useState<PersonRow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [fatherOf, setFatherOf] = useState<Map<string, string>>(new Map());
+  const [motherOf, setMotherOf] = useState<Map<string, string>>(new Map());
   const [spouseOf, setSpouseOf] = useState<Map<string, string>>(new Map());
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
   const [highlightRootId, setHighlightRootId] = useState<string | null>(null);
@@ -197,13 +327,31 @@ export default function TreeManagerPage() {
     new Set(),
   );
 
+  // Right-click context menu + tree-root override + quick-add relative modal
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    personId: string;
+  } | null>(null);
+  const [rootOverrideId, setRootOverrideId] = useState<string | null>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddType, setQuickAddType] = useState<
+    "child" | "parent" | "sibling" | "spouse"
+  >("child");
+  const [quickAddTargetId, setQuickAddTargetId] = useState<string | null>(null);
+  const [quickAddName, setQuickAddName] = useState("");
+  const [quickAddGender, setQuickAddGender] = useState("");
+  const [quickAddBirthDate, setQuickAddBirthDate] = useState("");
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
+  const [quickAddError, setQuickAddError] = useState("");
+
   async function loadTree() {
     setLoading(true);
 
     const { data: personsData } = await supabase
       .from("persons")
       .select(
-        "id, full_name, birth_date, birth_place, is_deceased, death_date, avatar_path",
+        "id, full_name, birth_date, birth_place, is_deceased, death_date, avatar_path, gender",
       )
       .order("full_name");
 
@@ -227,6 +375,15 @@ export default function TreeManagerPage() {
       fatherOfMap.set(r.person_id, r.related_person_id);
     });
     setFatherOf(fatherOfMap);
+
+    const motherRels = (relData ?? []).filter(
+      (r) => r.relationship_type === "mother",
+    );
+    const motherOfMap = new Map<string, string>();
+    motherRels.forEach((r) => {
+      motherOfMap.set(r.person_id, r.related_person_id);
+    });
+    setMotherOf(motherOfMap);
 
     const spouseRels = (relData ?? []).filter(
       (r) => r.relationship_type === "spouse",
@@ -260,6 +417,7 @@ export default function TreeManagerPage() {
           years: p ? formatYears(p) : "",
           avatarPath: p?.avatar_path ?? "",
           birthPlace: p?.birth_place ?? "",
+          gender: p?.gender ?? undefined,
         },
         children: kids.map((cid) => buildNode(cid)),
       };
@@ -305,7 +463,6 @@ export default function TreeManagerPage() {
     return chain;
   }
 
-  // Walk up exactly `steps` generations from startId, collecting every ID passed through
   function getPathIds(startId: string, steps: number): string[] {
     const path: string[] = [startId];
     let cur = startId;
@@ -317,7 +474,25 @@ export default function TreeManagerPage() {
     }
     return path;
   }
-
+  async function handleDownloadPng() {
+    if (!expandedRef.current) return;
+    setExportingPng(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(expandedRef.current, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `shajara-nama-tree-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+    } catch (err) {
+      alert("Could not generate the PNG image. Please try Print instead.");
+    }
+    setExportingPng(false);
+  }
   function getRelationshipResult(idA: string, idB: string) {
     if (idA === idB) return { kind: "same" as const };
     if (spouseOf.get(idA) === idB) return { kind: "spouse" as const };
@@ -403,7 +578,6 @@ export default function TreeManagerPage() {
 
     setRelationshipPathIds(allIds);
 
-    // Make sure every node on the path is actually visible, even if part of the tree was collapsed
     setCollapsedIds((prev) => {
       const next = new Set(prev);
       allIds.forEach((id) => next.delete(id));
@@ -513,6 +687,132 @@ export default function TreeManagerPage() {
     URL.revokeObjectURL(url);
   }
 
+  // ---- Context menu handlers ----
+  function openContextMenu(e: React.MouseEvent, id: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedId(id);
+    setContextMenu({ x: e.clientX, y: e.clientY, personId: id });
+  }
+
+  function closeContextMenu() {
+    setContextMenu(null);
+  }
+
+  function handleFocusCenter(id: string) {
+    selectAndReveal(id);
+    setResetKey((k) => k + 1);
+    closeContextMenu();
+  }
+
+  function handleSetAsRoot(id: string) {
+    setRootOverrideId(id);
+    setResetKey((k) => k + 1);
+    closeContextMenu();
+  }
+
+  function clearRootOverride() {
+    setRootOverrideId(null);
+    setResetKey((k) => k + 1);
+  }
+
+  function openQuickAdd(
+    type: "child" | "parent" | "sibling" | "spouse",
+    targetId: string,
+  ) {
+    setQuickAddType(type);
+    setQuickAddTargetId(targetId);
+    setQuickAddName("");
+    setQuickAddGender("");
+    setQuickAddBirthDate("");
+    setQuickAddError("");
+    setQuickAddOpen(true);
+    closeContextMenu();
+  }
+
+  async function submitQuickAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!quickAddName.trim() || !quickAddTargetId) {
+      setQuickAddError("Name is required.");
+      return;
+    }
+    setQuickAddSaving(true);
+    setQuickAddError("");
+
+    const { data: newPerson, error: insertError } = await supabase
+      .from("persons")
+      .insert({
+        full_name: quickAddName,
+        gender: quickAddGender || null,
+        birth_date: quickAddBirthDate || null,
+      })
+      .select()
+      .single();
+
+    if (insertError || !newPerson) {
+      setQuickAddSaving(false);
+      setQuickAddError(insertError?.message ?? "Could not create person.");
+      return;
+    }
+
+    const target = persons.find((p) => p.id === quickAddTargetId);
+    const relRows: any[] = [];
+
+    if (quickAddType === "child") {
+      const relType = target?.gender === "female" ? "mother" : "father";
+      relRows.push({
+        person_id: newPerson.id,
+        related_person_id: quickAddTargetId,
+        relationship_type: relType,
+      });
+    } else if (quickAddType === "parent") {
+      const relType = quickAddGender === "female" ? "mother" : "father";
+      relRows.push({
+        person_id: quickAddTargetId,
+        related_person_id: newPerson.id,
+        relationship_type: relType,
+      });
+    } else if (quickAddType === "sibling") {
+      const dad = fatherOf.get(quickAddTargetId);
+      const mom = motherOf.get(quickAddTargetId);
+      if (dad)
+        relRows.push({
+          person_id: newPerson.id,
+          related_person_id: dad,
+          relationship_type: "father",
+        });
+      if (mom)
+        relRows.push({
+          person_id: newPerson.id,
+          related_person_id: mom,
+          relationship_type: "mother",
+        });
+    } else if (quickAddType === "spouse") {
+      relRows.push({
+        person_id: quickAddTargetId,
+        related_person_id: newPerson.id,
+        relationship_type: "spouse",
+      });
+    }
+
+    if (relRows.length > 0) {
+      const { error: relError } = await supabase
+        .from("relationships")
+        .insert(relRows);
+      if (relError) {
+        setQuickAddSaving(false);
+        setQuickAddError(
+          `Person created, but linking failed: ${relError.message}`,
+        );
+        return;
+      }
+    }
+
+    setQuickAddSaving(false);
+    setQuickAddOpen(false);
+    loadTree();
+  }
+
   useEffect(() => {
     loadTree();
   }, []);
@@ -522,7 +822,15 @@ export default function TreeManagerPage() {
       const { width } = containerRef.current.getBoundingClientRect();
       setTranslate({ x: width / 2, y: 90 });
     }
-  }, [treeData, resetKey]);
+  }, [treeData, rootOverrideId, resetKey]);
+
+  // The tree we're actually displaying — either the full tree, or (if "Set as tree root"
+  // was used) just the subtree starting from the chosen person downward.
+  const displayTreeData = useMemo(() => {
+    if (!treeData) return null;
+    if (!rootOverrideId) return treeData;
+    return findNode(treeData, rootOverrideId) ?? treeData;
+  }, [treeData, rootOverrideId]);
 
   const hasChildrenSet = useMemo(() => {
     const set = new Set<string>();
@@ -532,14 +840,14 @@ export default function TreeManagerPage() {
         node.children.forEach(walk);
       }
     }
-    if (treeData) walk(treeData);
+    if (displayTreeData) walk(displayTreeData);
     return set;
-  }, [treeData]);
+  }, [displayTreeData]);
 
   const visibleTreeData = useMemo(() => {
-    if (!treeData) return null;
-    return filterCollapsed(treeData, collapsedIds);
-  }, [treeData, collapsedIds]);
+    if (!displayTreeData) return null;
+    return filterCollapsed(displayTreeData, collapsedIds);
+  }, [displayTreeData, collapsedIds]);
 
   const selectedPerson = persons.find((p) => p.id === selectedId) ?? null;
 
@@ -658,7 +966,7 @@ export default function TreeManagerPage() {
 
     let background = "white";
     if (isOnPath) background = "rgba(122,46,46,0.14)";
-    else if (isHighlighted) background = "rgba(31,77,58,0.12)";
+    else if (isHighlighted) background = "rgba(31,157,99,0.12)";
 
     return (
       <g>
@@ -686,6 +994,7 @@ export default function TreeManagerPage() {
             }
             onMouseLeave={() => setHovered(null)}
             onClick={() => setSelectedId(id)}
+            onContextMenu={(e) => openContextMenu(e, id)}
             style={{
               display: "flex",
               flexDirection: "column",
@@ -696,11 +1005,11 @@ export default function TreeManagerPage() {
               borderRadius: "16px",
               background,
               border: isSelected
-                ? "2px solid var(--color-gold)"
+                ? "2px solid var(--color-emerald)"
                 : isOnPath
                   ? "2px solid var(--color-maroon)"
-                  : "1px solid rgba(15,31,61,0.15)",
-              boxShadow: isSelected ? "0 4px 12px rgba(15,31,61,0.15)" : "none",
+                  : "1px solid rgba(15,31,61,0.12)",
+              boxShadow: isSelected ? "0 4px 12px rgba(27,75,58,0.15)" : "none",
               width: "134px",
             }}
           >
@@ -710,7 +1019,7 @@ export default function TreeManagerPage() {
                 height: "36px",
                 borderRadius: "50%",
                 overflow: "hidden",
-                background: "rgba(15,31,61,0.08)",
+                background: "rgba(27,75,58,0.08)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -734,7 +1043,7 @@ export default function TreeManagerPage() {
               style={{
                 fontSize: "12px",
                 fontWeight: 500,
-                color: "var(--color-navy)",
+                color: "var(--color-ink)",
                 textAlign: "center",
                 lineHeight: 1.2,
               }}
@@ -760,7 +1069,7 @@ export default function TreeManagerPage() {
             <circle
               r={7}
               cy={50}
-              fill={isCollapsed ? "var(--color-navy)" : "var(--color-gold)"}
+              fill={isCollapsed ? "var(--color-navy)" : "var(--color-emerald)"}
               stroke="white"
               strokeWidth={1.5}
             />
@@ -783,11 +1092,96 @@ export default function TreeManagerPage() {
 
   return (
     <div className="space-y-6">
-      {rosterOpen && rosterRootId ? (
+      {expandedOpen ? (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
             <div>
-              <h2 className="font-display text-2xl font-semibold text-[var(--color-navy)]">
+              <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)]">
+                Full Tree Chart
+              </h2>
+              <p className="font-body text-sm text-[var(--color-ink)]/60 mt-1">
+                {rootOverrideId
+                  ? `Viewing from ${persons.find((p) => p.id === rootOverrideId)?.full_name} downward`
+                  : "The complete family tree"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDownloadPng}
+                disabled={exportingPng}
+                className="inline-flex items-center gap-2 font-body text-sm font-medium text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-4 py-2.5 rounded-full hover:bg-[var(--color-gold)]/20 transition-colors whitespace-nowrap disabled:opacity-50"
+              >
+                <FontAwesomeIcon icon={faImage} className="text-xs" />
+                {exportingPng ? "Generating..." : "Download PNG"}
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 font-body text-sm font-medium text-[var(--color-emerald)] bg-[var(--color-emerald)]/10 px-4 py-2.5 rounded-full hover:bg-[var(--color-emerald)]/20 transition-colors whitespace-nowrap"
+              >
+                <FontAwesomeIcon icon={faPrint} className="text-xs" />
+                Print / Save as PDF
+              </button>
+              <button
+                onClick={() => setExpandedOpen(false)}
+                className="inline-flex items-center gap-2 bg-[var(--color-navy)] text-white font-body text-sm font-medium px-4 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors whitespace-nowrap"
+              >
+                <FontAwesomeIcon icon={faXmark} className="text-xs" />
+                Close
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-5 no-print">
+            <span className="inline-flex items-center gap-2 font-body text-xs text-[var(--color-ink)]/60">
+              <span
+                className="w-3 h-3 rounded-full"
+                style={{ border: "2px solid var(--color-navy)" }}
+              />
+              Male
+            </span>
+            <span className="inline-flex items-center gap-2 font-body text-xs text-[var(--color-ink)]/60">
+              <span
+                className="w-3 h-3 rounded-full"
+                style={{ border: "2px solid #B5487A" }}
+              />
+              Female
+            </span>
+            <span className="inline-flex items-center gap-2 font-body text-xs text-[var(--color-ink)]/60">
+              <span className="w-3 h-3 rounded-full border border-[var(--color-navy)]/20" />
+              Unspecified
+            </span>
+          </div>
+
+          <div
+            ref={expandedRef}
+            className="bg-white border border-[var(--color-navy)]/8 rounded-2xl p-6 md:p-10 print:border-none print:bg-transparent overflow-x-auto"
+          >
+            <div className="text-center mb-8">
+              <h3 className="font-display text-2xl font-semibold text-[var(--color-ink)]">
+                Shajara Nama
+              </h3>
+              <p className="font-body text-xs text-[var(--color-ink)]/50 mt-2">
+                {persons.length} member{persons.length !== 1 ? "s" : ""} ·
+                Generated{" "}
+                {new Date().toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </p>
+            </div>
+            <div className="flex justify-center min-w-max px-4">
+              {displayTreeData && (
+                <StaticChartNode node={displayTreeData} isRoot />
+              )}
+            </div>
+          </div>
+        </>
+      ) : rosterOpen && rosterRootId ? (
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+            <div>
+              <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)]">
                 Branch Roster
               </h2>
               <p className="font-body text-sm text-[var(--color-ink)]/60 mt-1">
@@ -812,7 +1206,7 @@ export default function TreeManagerPage() {
               </button>
               <button
                 onClick={() => setRosterOpen(false)}
-                className="inline-flex items-center gap-2 bg-[var(--color-navy)] text-[var(--color-ivory)] font-body text-sm font-medium px-4 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors whitespace-nowrap"
+                className="inline-flex items-center gap-2 bg-[var(--color-navy)] text-white font-body text-sm font-medium px-4 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors whitespace-nowrap"
               >
                 <FontAwesomeIcon icon={faXmark} className="text-xs" />
                 Close
@@ -820,8 +1214,8 @@ export default function TreeManagerPage() {
             </div>
           </div>
 
-          <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-6 md:p-8 print:border-none print:bg-transparent">
-            <h3 className="font-display text-xl font-semibold text-[var(--color-navy)] mb-1">
+          <div className="bg-white border border-[var(--color-navy)]/8 rounded-2xl p-6 md:p-8 print:border-none print:bg-transparent">
+            <h3 className="font-display text-xl font-semibold text-[var(--color-ink)] mb-1">
               {persons.find((p) => p.id === rosterRootId)?.full_name}'s Family
               Roster
             </h3>
@@ -860,12 +1254,12 @@ export default function TreeManagerPage() {
         <>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="font-display text-2xl font-semibold text-[var(--color-navy)]">
+              <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)]">
                 Family Tree Manager
               </h2>
               <p className="font-body text-[var(--color-ink)]/60 mt-1 text-sm">
-                Scroll or pinch to zoom, drag to pan. Click a person to select
-                them.
+                Scroll or pinch to zoom, drag to pan. Click a person to select,
+                right-click for quick actions.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -894,6 +1288,17 @@ export default function TreeManagerPage() {
                 <FontAwesomeIcon icon={faExpand} className="text-sm" />
               </button>
               <button
+                onClick={() => setExpandedOpen(true)}
+                className="w-10 cursor-pointer h-10 rounded-full bg-white border border-[var(--color-navy)]/10 flex items-center justify-center text-[var(--color-navy)] hover:bg-[var(--color-navy)]/5"
+                aria-label="Full tree chart"
+                title="Open full printable tree chart"
+              >
+                <FontAwesomeIcon
+                  icon={faUpRightAndDownLeftFromCenter}
+                  className="text-sm"
+                />
+              </button>
+              <button
                 onClick={() => setCollapsedIds(new Set())}
                 className="w-10 cursor-pointer h-10 rounded-full bg-white border border-[var(--color-navy)]/10 flex items-center justify-center text-[var(--color-navy)] hover:bg-[var(--color-navy)]/5"
                 aria-label="Expand all"
@@ -911,13 +1316,30 @@ export default function TreeManagerPage() {
               </button>
               <button
                 onClick={handleExport}
-                className="inline-flex cursor-pointer items-center gap-2 bg-[var(--color-navy)] text-[var(--color-ivory)] font-body text-sm font-medium px-4 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors whitespace-nowrap"
+                className="inline-flex cursor-pointer items-center gap-2 bg-[var(--color-navy)] text-white font-body text-sm font-medium px-4 py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors whitespace-nowrap"
               >
                 <FontAwesomeIcon icon={faDownload} className="text-xs" />
                 Export CSV
               </button>
             </div>
           </div>
+
+          {rootOverrideId && (
+            <div className="flex items-center justify-between gap-4 bg-[var(--color-emerald)]/5 border border-[var(--color-emerald)]/20 rounded-xl px-4 py-3">
+              <span className="inline-flex items-center gap-2 font-body text-sm text-[var(--color-emerald)]">
+                <FontAwesomeIcon icon={faSitemap} className="text-xs" />
+                Viewing tree from{" "}
+                {persons.find((p) => p.id === rootOverrideId)?.full_name}{" "}
+                downward
+              </span>
+              <button
+                onClick={clearRootOverride}
+                className="font-body text-xs font-medium text-[var(--color-emerald)] hover:underline"
+              >
+                Show Full Tree
+              </button>
+            </div>
+          )}
 
           {relationshipPathIds.size > 0 && (
             <div className="flex items-center justify-between gap-4 bg-[var(--color-maroon)]/5 border border-[var(--color-maroon)]/20 rounded-xl px-4 py-3">
@@ -937,14 +1359,14 @@ export default function TreeManagerPage() {
           <div className="relative max-w-md">
             <FontAwesomeIcon
               icon={faMagnifyingGlass}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-navy)]/40 text-sm"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-ink)]/35 text-sm"
             />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search for a person..."
-              className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/15 rounded-xl pl-11 pr-4 py-2.5 focus:outline-none focus:border-[var(--color-gold)] transition-colors"
+              className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/12 rounded-xl pl-11 pr-4 py-2.5 focus:outline-none focus:border-[var(--color-emerald)]/50 transition-colors"
             />
             {searchResults.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-[var(--color-navy)]/10 rounded-xl shadow-lg z-10 overflow-hidden">
@@ -955,7 +1377,7 @@ export default function TreeManagerPage() {
                       selectAndReveal(p.id);
                       setSearch("");
                     }}
-                    className="w-full text-left font-body text-sm text-[var(--color-ink)]/85 px-4 py-2.5 hover:bg-[var(--color-navy)]/5"
+                    className="w-full text-left font-body text-sm text-[var(--color-ink)]/85 px-4 py-2.5 hover:bg-[var(--color-emerald)]/5"
                   >
                     {p.full_name}
                   </button>
@@ -977,7 +1399,7 @@ export default function TreeManagerPage() {
             <div className="grid lg:grid-cols-3 gap-6">
               <div
                 ref={containerRef}
-                className="lg:col-span-2 bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl overflow-hidden"
+                className="lg:col-span-2 bg-white border border-[var(--color-navy)]/8 rounded-2xl overflow-hidden"
                 style={{ height: "600px" }}
               >
                 {visibleTreeData && (
@@ -998,8 +1420,8 @@ export default function TreeManagerPage() {
                 )}
               </div>
 
-              <div className="bg-white/70 border border-[var(--color-navy)]/10 rounded-2xl p-5 md:p-6 h-fit">
-                <h3 className="font-display text-lg font-semibold text-[var(--color-navy)] mb-4">
+              <div className="bg-white border border-[var(--color-navy)]/8 rounded-2xl p-5 md:p-6 h-fit">
+                <h3 className="font-display text-lg font-semibold text-[var(--color-ink)] mb-4">
                   Selected Person
                 </h3>
                 {selectedPerson ? (
@@ -1025,7 +1447,7 @@ export default function TreeManagerPage() {
                         )}
                       </div>
                       <div>
-                        <p className="font-body text-sm font-medium text-[var(--color-navy)]">
+                        <p className="font-body text-sm font-medium text-[var(--color-ink)]">
                           {selectedPerson.full_name}
                         </p>
                         <p className="font-body text-xs text-[var(--color-ink)]/50">
@@ -1040,16 +1462,16 @@ export default function TreeManagerPage() {
                               >
                                 <button
                                   onClick={() => selectAndReveal(ancestor.id)}
-                                  className="font-body text-xs text-[var(--color-navy)]/60 hover:text-[var(--color-gold)] hover:underline transition-colors"
+                                  className="font-body text-xs text-[var(--color-ink)]/50 hover:text-[var(--color-emerald)] hover:underline transition-colors"
                                 >
                                   {ancestor.full_name}
                                 </button>
-                                <span className="text-[var(--color-navy)]/30 text-xs">
+                                <span className="text-[var(--color-ink)]/25 text-xs">
                                   →
                                 </span>
                               </span>
                             ))}
-                            <span className="font-body text-xs text-[var(--color-gold)] font-medium">
+                            <span className="font-body text-xs text-[var(--color-emerald)] font-medium">
                               {selectedPerson.full_name}
                             </span>
                           </div>
@@ -1061,7 +1483,7 @@ export default function TreeManagerPage() {
                         onClick={() => toggleHighlight(selectedPerson.id)}
                         className={`inline-flex items-center justify-center gap-1.5 font-body text-xs rounded-lg py-2.5 transition-colors ${
                           highlightRootId === selectedPerson.id
-                            ? "text-[var(--color-ivory)] bg-[var(--color-emerald)] hover:opacity-90"
+                            ? "text-white bg-[var(--color-emerald)] hover:opacity-90"
                             : "text-[var(--color-emerald)] bg-[var(--color-emerald)]/10 hover:bg-[var(--color-emerald)]/20"
                         }`}
                       >
@@ -1099,7 +1521,7 @@ export default function TreeManagerPage() {
                       </Link>
                       <Link
                         href={`/admin/members/new?fatherId=${selectedPerson.id}`}
-                        className="inline-flex items-center justify-center gap-1.5 font-body text-xs text-[var(--color-gold)]/90 bg-[var(--color-gold)]/10 rounded-lg py-2.5 hover:bg-[var(--color-gold)]/20"
+                        className="inline-flex items-center justify-center gap-1.5 font-body text-xs text-[var(--color-gold)] bg-[var(--color-gold)]/10 rounded-lg py-2.5 hover:bg-[var(--color-gold)]/20"
                       >
                         <FontAwesomeIcon
                           icon={faUserPlus}
@@ -1136,10 +1558,10 @@ export default function TreeManagerPage() {
             >
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[var(--color-ivory)] rounded-2xl p-6 w-full max-w-md"
+                className="bg-white rounded-2xl p-6 w-full max-w-md"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-display text-lg font-semibold text-[var(--color-navy)]">
+                  <h3 className="font-display text-lg font-semibold text-[var(--color-ink)]">
                     Merge Duplicate People
                   </h3>
                   <button
@@ -1157,13 +1579,13 @@ export default function TreeManagerPage() {
                 </p>
                 <div className="space-y-4">
                   <div>
-                    <label className="font-body text-sm text-[var(--color-navy)] mb-1.5 block">
+                    <label className="font-body text-sm text-[var(--color-ink)] mb-1.5 block">
                       Keep this profile
                     </label>
                     <select
                       value={keepId}
                       onChange={(e) => setKeepId(e.target.value)}
-                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-gold)] transition-colors"
+                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/12 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-emerald)]/50 transition-colors"
                     >
                       <option value="">Select...</option>
                       {persons.map((p) => (
@@ -1174,13 +1596,13 @@ export default function TreeManagerPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="font-body text-sm text-[var(--color-navy)] mb-1.5 block">
+                    <label className="font-body text-sm text-[var(--color-ink)] mb-1.5 block">
                       Remove this duplicate
                     </label>
                     <select
                       value={dupId}
                       onChange={(e) => setDupId(e.target.value)}
-                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-gold)] transition-colors"
+                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/12 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-emerald)]/50 transition-colors"
                     >
                       <option value="">Select...</option>
                       {persons
@@ -1203,7 +1625,7 @@ export default function TreeManagerPage() {
                     <button
                       onClick={handleMerge}
                       disabled={!keepId || !dupId || merging}
-                      className="flex-1 bg-[var(--color-maroon)] text-[var(--color-ivory)] font-body text-sm font-medium py-2.5 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40"
+                      className="flex-1 bg-[var(--color-maroon)] text-white font-body text-sm font-medium py-2.5 rounded-full hover:opacity-90 transition-opacity disabled:opacity-40"
                     >
                       {merging ? "Merging..." : "Merge & Delete Duplicate"}
                     </button>
@@ -1220,10 +1642,10 @@ export default function TreeManagerPage() {
             >
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="bg-[var(--color-ivory)] rounded-2xl p-6 w-full max-w-md"
+                className="bg-white rounded-2xl p-6 w-full max-w-md"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-display text-lg font-semibold text-[var(--color-navy)]">
+                  <h3 className="font-display text-lg font-semibold text-[var(--color-ink)]">
                     Compare Relationship
                   </h3>
                   <button
@@ -1240,13 +1662,13 @@ export default function TreeManagerPage() {
                 </p>
                 <div className="space-y-4">
                   <div>
-                    <label className="font-body text-sm text-[var(--color-navy)] mb-1.5 block">
+                    <label className="font-body text-sm text-[var(--color-ink)] mb-1.5 block">
                       Person A
                     </label>
                     <select
                       value={compareAId}
                       onChange={(e) => setCompareAId(e.target.value)}
-                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-gold)] transition-colors"
+                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/12 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-emerald)]/50 transition-colors"
                     >
                       <option value="">Select...</option>
                       {persons.map((p) => (
@@ -1257,13 +1679,13 @@ export default function TreeManagerPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="font-body text-sm text-[var(--color-navy)] mb-1.5 block">
+                    <label className="font-body text-sm text-[var(--color-ink)] mb-1.5 block">
                       Person B
                     </label>
                     <select
                       value={compareBId}
                       onChange={(e) => setCompareBId(e.target.value)}
-                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-gold)] transition-colors"
+                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/12 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-emerald)]/50 transition-colors"
                     >
                       <option value="">Select...</option>
                       {persons
@@ -1278,7 +1700,7 @@ export default function TreeManagerPage() {
 
                   {compareAId && compareBId && (
                     <div className="bg-[var(--color-navy)]/5 rounded-xl p-4 space-y-2">
-                      <p className="font-body text-sm text-[var(--color-navy)] font-medium">
+                      <p className="font-body text-sm text-[var(--color-ink)] font-medium">
                         {buildRelationshipSentence(compareAId, compareBId)}
                       </p>
                       <p className="font-body text-xs text-[var(--color-ink)]/60">
@@ -1290,7 +1712,7 @@ export default function TreeManagerPage() {
                   {compareResult?.kind === "found" && (
                     <button
                       onClick={showRelationshipPathInTree}
-                      className="w-full inline-flex items-center justify-center gap-2 bg-[var(--color-maroon)] text-[var(--color-ivory)] font-body text-sm font-medium py-2.5 rounded-full hover:opacity-90 transition-opacity"
+                      className="w-full inline-flex items-center justify-center gap-2 bg-[var(--color-maroon)] text-white font-body text-sm font-medium py-2.5 rounded-full hover:opacity-90 transition-opacity"
                     >
                       <FontAwesomeIcon icon={faRoute} className="text-xs" />
                       Show This Path in the Tree
@@ -1304,6 +1726,205 @@ export default function TreeManagerPage() {
                     Close
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Right-click quick-action menu */}
+          {contextMenu && (
+            <div
+              className="fixed inset-0 z-40"
+              onClick={closeContextMenu}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                closeContextMenu();
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bg-white rounded-2xl shadow-xl border border-[var(--color-navy)]/10 py-2 w-60"
+                style={{
+                  left: Math.min(
+                    contextMenu.x,
+                    (typeof window !== "undefined" ? window.innerWidth : 800) -
+                      250,
+                  ),
+                  top: Math.min(
+                    contextMenu.y,
+                    (typeof window !== "undefined" ? window.innerHeight : 600) -
+                      420,
+                  ),
+                }}
+              >
+                <div className="px-4 py-2.5 border-b border-[var(--color-navy)]/8">
+                  <p className="font-body text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink)]/40">
+                    Person
+                  </p>
+                  <p className="font-body text-sm font-semibold text-[var(--color-ink)] truncate">
+                    {
+                      persons.find((p) => p.id === contextMenu.personId)
+                        ?.full_name
+                    }
+                  </p>
+                </div>
+                <div className="py-1">
+                  <MenuItem
+                    icon={faPen}
+                    label="Edit person"
+                    onClick={() =>
+                      router.push(`/admin/members/${contextMenu.personId}/edit`)
+                    }
+                  />
+                  <MenuItem
+                    icon={faEye}
+                    label="Focus &amp; center"
+                    onClick={() => handleFocusCenter(contextMenu.personId)}
+                  />
+                  <MenuItem
+                    icon={faCrosshairs}
+                    label="Set as tree root"
+                    onClick={() => handleSetAsRoot(contextMenu.personId)}
+                  />
+                  <MenuItem
+                    icon={faHeart}
+                    label="Add spouse / partner"
+                    onClick={() => openQuickAdd("spouse", contextMenu.personId)}
+                  />
+                  <MenuItem
+                    icon={faChild}
+                    label="Add child"
+                    onClick={() => openQuickAdd("child", contextMenu.personId)}
+                  />
+                  <MenuItem
+                    icon={faUserPlus}
+                    label="Add parent"
+                    onClick={() => openQuickAdd("parent", contextMenu.personId)}
+                  />
+                  <MenuItem
+                    icon={faUsers}
+                    label="Add sibling"
+                    onClick={() =>
+                      openQuickAdd("sibling", contextMenu.personId)
+                    }
+                  />
+                </div>
+                <div className="border-t border-[var(--color-navy)]/8 mt-1 pt-1">
+                  <MenuItem
+                    icon={faTrash}
+                    label="Delete person"
+                    danger
+                    onClick={() => {
+                      const p = persons.find(
+                        (pp) => pp.id === contextMenu.personId,
+                      );
+                      if (p) setPendingDelete(p);
+                      closeContextMenu();
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick-add relative modal */}
+          {quickAddOpen && (
+            <div
+              className="fixed inset-0 z-50 bg-[var(--color-ink)]/50 flex items-center justify-center p-4"
+              onClick={() => setQuickAddOpen(false)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl p-6 w-full max-w-sm"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-display text-lg font-semibold text-[var(--color-ink)]">
+                    Add{" "}
+                    {quickAddType === "child"
+                      ? "Child"
+                      : quickAddType === "parent"
+                        ? "Parent"
+                        : quickAddType === "sibling"
+                          ? "Sibling"
+                          : "Spouse"}{" "}
+                    of{" "}
+                    {persons.find((p) => p.id === quickAddTargetId)?.full_name}
+                  </h3>
+                  <button
+                    onClick={() => setQuickAddOpen(false)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--color-ink)]/50 hover:bg-[var(--color-navy)]/5"
+                    aria-label="Close"
+                  >
+                    <FontAwesomeIcon icon={faXmark} className="text-sm" />
+                  </button>
+                </div>
+
+                {quickAddError && (
+                  <div className="font-body text-xs text-[var(--color-maroon)] bg-[var(--color-maroon)]/10 rounded-lg px-3 py-2 mb-4">
+                    {quickAddError}
+                  </div>
+                )}
+
+                <form onSubmit={submitQuickAdd} className="space-y-4">
+                  <div>
+                    <label className="font-body text-sm text-[var(--color-ink)] mb-1.5 block">
+                      Full Name *
+                    </label>
+                    <input
+                      value={quickAddName}
+                      onChange={(e) => setQuickAddName(e.target.value)}
+                      placeholder="Full name"
+                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/12 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-emerald)]/50 transition-colors"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="font-body text-sm text-[var(--color-ink)] mb-1.5 block">
+                      Gender{" "}
+                      {quickAddType === "parent" && (
+                        <span className="text-[var(--color-ink)]/40">
+                          (determines Father/Mother)
+                        </span>
+                      )}
+                    </label>
+                    <select
+                      value={quickAddGender}
+                      onChange={(e) => setQuickAddGender(e.target.value)}
+                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/12 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-emerald)]/50 transition-colors"
+                    >
+                      <option value="">Select...</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-body text-sm text-[var(--color-ink)] mb-1.5 block">
+                      Birth Date
+                    </label>
+                    <input
+                      type="date"
+                      value={quickAddBirthDate}
+                      onChange={(e) => setQuickAddBirthDate(e.target.value)}
+                      className="w-full font-body text-sm bg-white border border-[var(--color-navy)]/12 rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--color-emerald)]/50 transition-colors"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setQuickAddOpen(false)}
+                      className="flex-1 font-body text-sm font-medium text-[var(--color-ink)]/70 py-2.5 rounded-full hover:bg-[var(--color-navy)]/5 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={quickAddSaving}
+                      className="flex-1 bg-[var(--color-navy)] text-white font-body text-sm font-medium py-2.5 rounded-full hover:bg-[var(--color-navy-light)] transition-colors disabled:opacity-60"
+                    >
+                      {quickAddSaving ? "Saving..." : "Add & Link"}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}
@@ -1323,7 +1944,7 @@ export default function TreeManagerPage() {
 
           {hovered && (
             <div
-              className="fixed z-50 pointer-events-none bg-[var(--color-navy)] text-[var(--color-ivory)] rounded-xl px-3 py-2 shadow-lg"
+              className="fixed z-50 pointer-events-none bg-[var(--color-navy)] text-white rounded-xl px-3 py-2 shadow-lg"
               style={{
                 left: hovered.x + 14,
                 top: hovered.y + 14,
@@ -1332,12 +1953,12 @@ export default function TreeManagerPage() {
             >
               <p className="font-body text-xs font-medium">{hovered.name}</p>
               {hovered.years && (
-                <p className="font-body text-[10px] text-[var(--color-ivory)]/70">
+                <p className="font-body text-[10px] text-white/70">
                   {hovered.years}
                 </p>
               )}
               {hovered.birthPlace && (
-                <p className="font-body text-[10px] text-[var(--color-ivory)]/70">
+                <p className="font-body text-[10px] text-white/70">
                   Born in {hovered.birthPlace}
                 </p>
               )}
